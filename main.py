@@ -230,7 +230,17 @@ def work_session_to_dict(session):
         'end_time': session.end_time.isoformat()
     }
 
+def dict_to_work_sessions(data):
+    start_time = data['start_time']
+    end_time = data['end_time']
+    start_time = dt.datetime.fromisoformat(start_time)
+    end_time = dt.datetime.fromisoformat(end_time)
+    return WorkSession(start_time, end_time)
 
+with open('work_sessions.json', 'r') as f:
+    loaded_data = json.load(f)
+
+    test_sessions = dict_to_work_sessions(loaded_data[0])
 # List comprehension: read right-to-left as "for each session in sessions,
 # run work_session_to_dict(session), and collect all the results into a
 # new list." Equivalent to a plain loop that appends to an empty list -
@@ -253,6 +263,7 @@ print(total_hours(sessions))              # expect 15.0 -> five 3-hour work sess
 print(is_compliant(sessions, supervision_sessions))     # expect True  -> 15 hrs >> 0.75 hr requirement
 print(has_direct_observation(supervision_sessions))     # expect True  -> Mon/Tue/Wed were observed
 print(work_session_to_dict(monday_session))             # expect a dict with two ISO date strings
+print(test_sessions.start_time)
 
 
 # =============================================================================
