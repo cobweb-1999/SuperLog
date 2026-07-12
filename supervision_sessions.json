@@ -1,0 +1,37 @@
+[
+    {
+        "start_time": "2026-07-06T09:30:00",
+        "end_time": "2026-07-06T12:30:00",
+        "format": 1,
+        "session_type": 1,
+        "is_direct_observation": true
+    },
+    {
+        "start_time": "2026-07-07T09:30:00",
+        "end_time": "2026-07-07T12:30:00",
+        "format": 1,
+        "session_type": 1,
+        "is_direct_observation": true
+    },
+    {
+        "start_time": "2026-07-08T09:30:00",
+        "end_time": "2026-07-08T12:30:00",
+        "format": 1,
+        "session_type": 1,
+        "is_direct_observation": true
+    },
+    {
+        "start_time": "2026-07-09T09:30:00",
+        "end_time": "2026-07-09T12:30:00",
+        "format": 1,
+        "session_type": 0,
+        "is_direct_observation": false
+    },
+    {
+        "start_time": "2026-07-10T09:30:00",
+        "end_time": "2026-07-10T12:30:00",
+        "format": 1,
+        "session_type": 0,
+        "is_direct_observation": false
+    }
+]
