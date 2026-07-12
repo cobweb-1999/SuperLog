@@ -102,7 +102,8 @@ def total_hours(session_list):
 
 
 def sessions_in_month(session_list, year, month):
-    return [session for session in session_list if session.start_time.year == year and session.start_time.month == month]
+    return [session for session in session_list if
+            session.start_time.year == year and session.start_time.month == month]
 
 
 def is_compliant(work_sessions, supervision_sessions, year, month):
@@ -132,7 +133,7 @@ def generate_compliance_report(work_sessions, supervision_sessions, year, month)
     compliant = is_compliant(work_sessions, supervision_sessions, year, month)
     individual = has_individual_session(sessions_in_month(supervision_sessions, year, month))
     observation = has_direct_observation(sessions_in_month(supervision_sessions, year, month))
-    
+
     return {
         'is_compliant': compliant,
         'has_individual': individual,
@@ -177,43 +178,73 @@ def dict_to_supervision_sessions(data):
     is_direct_observation = data['is_direct_observation']
     return SupervisionSession(start_time, end_time, format, session_type, is_direct_observation)
 
-def sessions_in_month(session_list, year, month):
-    return [session for session in session_list if session.start_time.year == year and session.start_time.month == month]
 
-work_session_as_dict = [work_session_to_dict(session) for session in sessions]
+# =============================================================================
+# CLI MENU
+# =============================================================================
+def main_menu():
+    while True:
+        print("\n=== SUPERLOG Menu ===")
+        print("1) Log a work session")
+        print("2) Log a supervision session")
+        print("3) View compliance report")
+        print("4) Exit")
 
-with open('work_sessions.json', 'w') as file:
-    json.dump(work_session_as_dict, file, indent=4)
+        choice = input("Enter your choice (1-4): ")
 
-with open('work_sessions.json', 'r') as file:
-    loaded_work_data = json.load(file)
+        if choice == "1":
+            log_work_session()
+        elif choice == "2":
+            log_supervision_session()
+        elif choice == "3":
+            view_compliance()
+        elif choice == "4":
+            print("Goodbye!")
+            break
+        else:
+            print("Invalid choice. Try again.")
 
-loaded_work_sessions = [dict_to_work_session(entry) for entry in loaded_work_data]
+
+def log_work_session():
+    print("Format: YYYY-MM-DD HH:MM")
+    start_time = dt.datetime.fromisoformat(input("Start time: "))
+    end_time = dt.datetime.fromisoformat(input("End time: "))
+    new_session = WorkSession(start_time, end_time)
+    sessions.append(new_session)
+    print(f"Work session logged: {start_time} to {end_time}")
 
 
+def log_supervision_session():
+    print("Format: YYYY-MM-DD HH:MM")
+    start_time = dt.datetime.fromisoformat(input("Start time: "))
+    end_time = dt.datetime.fromisoformat(input("End time: "))
 
-# --- Save/load round trip test for supervision sessions ---
-supervision_sessions_as_dicts = [supervision_sessions_to_dict(s) for s in supervision_sessions]
+    print("Format: 1=IN_PERSON, 0=REMOTE")
+    format_choice = int(input("Format (1 or 0): "))
+    format_enum = ObservationType(format_choice)
 
-with open('supervision_sessions.json', 'w') as file:
-    json.dump(supervision_sessions_as_dicts, file, indent=4)
+    print("Session type: 1=INDIVIDUAL, 0=GROUP")
+    type_choice = int(input("Session type (1 or 0): "))
+    session_type_enum = SupervisionType(type_choice)
 
-with open('supervision_sessions.json', 'r') as file:
-    loaded_supervision_data = json.load(file)
+    direct_obs = input("Direct observation? (yes/no): ").lower() == "yes"
 
-loaded_supervision_sessions = [dict_to_supervision_sessions(entry) for entry in loaded_supervision_data]
+    new_session = SupervisionSession(start_time, end_time, format_enum, session_type_enum, direct_obs)
+    supervision_sessions.append(new_session)
+    print(f"Supervision session logged!")
 
-print("Superlog is starting...")
-print(total_hours(loaded_supervision_sessions))                    # expect 15.0
-print(has_individual_session(loaded_supervision_sessions))         # expect True
-print(has_direct_observation(loaded_supervision_sessions))         # expect True
-print(loaded_supervision_sessions[0].format)                       # expect ObservationType.IN_PERSON (a real Enum, not a number)
-print(total_hours(loaded_work_sessions))
-print(len(sessions_in_month(sessions, 2026, 7)))
-print(weeks_objects[0].name)
-print(weeks_objects[0].total_work_hours())
-print(weeks_objects[0].total_supervision_hours())
-print(loaded_work_sessions)
-print(is_compliant(sessions, supervision_sessions, 2026, 7))
-print("Compliance Report for July 2026:")
-print(generate_compliance_report(sessions, supervision_sessions, 2026, 7))
+
+def view_compliance():
+    year = int(input("Enter year (e.g., 2026): "))
+    month = int(input("Enter month (1-12): "))
+    
+    report = generate_compliance_report(sessions, supervision_sessions, year, month)
+    
+    print(f"\n=== Compliance Report for {month}/{year} ===")
+    print(f"Is Compliant: {report['is_compliant']}")
+    print(f"Has Individual Session: {report['has_individual']}")
+    print(f"Has Direct Observation: {report['has_direct_observation']}")
+
+
+if __name__ == "__main__":
+    main_menu()
