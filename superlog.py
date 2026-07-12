@@ -177,8 +177,9 @@ def dict_to_supervision_sessions(data):
     is_direct_observation = data['is_direct_observation']
     return SupervisionSession(start_time, end_time, format, session_type, is_direct_observation)
 
+def sessions_in_month(session_list, year, month):
+    return [session for session in session_list if session.start_time.year == year and session.start_time.month == month]
 
-# --- Test Code ---
 work_session_as_dict = [work_session_to_dict(session) for session in sessions]
 
 with open('work_sessions.json', 'w') as file:
@@ -189,6 +190,9 @@ with open('work_sessions.json', 'r') as file:
 
 loaded_work_sessions = [dict_to_work_session(entry) for entry in loaded_work_data]
 
+
+
+# --- Save/load round trip test for supervision sessions ---
 supervision_sessions_as_dicts = [supervision_sessions_to_dict(s) for s in supervision_sessions]
 
 with open('supervision_sessions.json', 'w') as file:
@@ -203,12 +207,13 @@ print("Superlog is starting...")
 print(total_hours(loaded_supervision_sessions))                    # expect 15.0
 print(has_individual_session(loaded_supervision_sessions))         # expect True
 print(has_direct_observation(loaded_supervision_sessions))         # expect True
-print(loaded_supervision_sessions[0].format)                       # expect ObservationType.IN_PERSON
+print(loaded_supervision_sessions[0].format)                       # expect ObservationType.IN_PERSON (a real Enum, not a number)
 print(total_hours(loaded_work_sessions))
 print(len(sessions_in_month(sessions, 2026, 7)))
 print(weeks_objects[0].name)
 print(weeks_objects[0].total_work_hours())
 print(weeks_objects[0].total_supervision_hours())
+print(loaded_work_sessions)
 print(is_compliant(sessions, supervision_sessions, 2026, 7))
 print("Compliance Report for July 2026:")
 print(generate_compliance_report(sessions, supervision_sessions, 2026, 7))
