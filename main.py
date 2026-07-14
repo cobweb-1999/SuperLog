@@ -129,17 +129,6 @@ def has_direct_observation(supervision_sessions):
             found = True
     return found
 
-
-def generate_compliance_report(work_sessions, supervision_sessions, year, month):
-    """Bundles all three BACB compliance checks for a given month into one result."""
-    month_supervision = sessions_in_month(supervision_sessions, year, month)
-    return {
-        'is_compliant': is_compliant(work_sessions, supervision_sessions, year, month),
-        'has_individual': has_individual_session(month_supervision),
-        'has_direct_observation': has_direct_observation(month_supervision)
-    }
-
-
 # =============================================================================
 # PERSISTENCE - converting objects <-> plain dictionaries for JSON storage
 # =============================================================================
@@ -213,25 +202,6 @@ def save_sessions():
     supervision_dicts = [supervision_session_to_dict(s) for s in supervision_sessions]
     with open('supervision_sessions.json', 'w') as file:
         json.dump(supervision_dicts, file, indent=4)
-
-def view_sessions_for_month():
-    month = int(input("Enter month (1-12): "))
-    year = int(input("Enter year (e.g., 2026): "))
-
-    filtered_work = sessions_in_month(sessions, year, month)
-    filtered_supervision = sessions_in_month(supervision_sessions, year, month)
-
-    print(f"\n=== Work Sessions for {month}/{year} ===")
-    if not filtered_work:
-        print("No work sessions recorded.")
-    else:
-       list_sessions(filtered_work)
-
-    print(f"\n=== Supervision Sessions for {month}/{year} ===")
-    if not filtered_supervision:
-        print("No supervision sessions recorded.")
-    else:
-        list_sessions(filtered_supervision)
 
 
 
@@ -347,6 +317,13 @@ def view_compliance():
     print(f"Has Individual Session:    {report['has_individual']}")
     print(f"Has Direct Observation:    {report['has_direct_observation']}")
 
+    print(f"Worked Hours: {report['work_hours']:.2f}")
+    print(f"Supervised Hours: {report['supervised_hours']:.2f}")
+    print(f"Required Hours: {report['required_hours']:.2f}")
+    print(f"Percent of Requirement Met: {report['percent_achieved']:.2f}%")
+    print(f"Hours needed to meet requirement: {report['hours_still_needed']:.2f}")
+
+
 
 def main_menu():
     load_sessions()
@@ -358,9 +335,10 @@ def main_menu():
         print("3) View compliance report")
         print("4) Edit/delete sessions")
         print("5) View sessions for month")
-        print("6) Exit")
+        print("6) View year summary")
+        print("7) Exit")
 
-        choice = input("Enter your choice (1-6): ")
+        choice = input("Enter your choice (1-7): ")
 
         if choice == "1":
             log_work_session()
@@ -382,6 +360,8 @@ def main_menu():
         elif choice == "5":
             view_sessions_in_month()
         elif choice == "6":
+            view_year_summary()
+        elif choice == "7":
             print("Goodbye!")
             break
         else:
@@ -437,7 +417,6 @@ def view_sessions_in_month():
         filtered_sessions = sessions
         filtered_supervision = supervision_sessions
         display_month = "ALL"
-        display_year = year_input
 
     else:
         try:
@@ -497,6 +476,49 @@ def view_sessions_in_month():
     input("\nPress Enter to return to menu...")
 
 
+def generate_compliance_report(work_sessions, supervision_sessions, year, month):
+    filtered_work = sessions_in_month(work_sessions, year, month)
+    filtered_superv = sessions_in_month(supervision_sessions, year, month)
+    work_hours = total_hours(filtered_work)
+    superv_hours = total_hours(filtered_superv)
+    required_hours = work_hours * .05
+
+    if work_hours == 0:
+        percent_achieved = 0
+    else:
+        percent_achieved = (superv_hours / required_hours) * 100
+
+    hours_still_needed = required_hours - superv_hours
+    if hours_still_needed < 0:
+        hours_still_needed = 0
+
+    return {
+        'is_compliant': is_compliant(work_sessions, supervision_sessions, year, month),
+        'has_individual': has_individual_session(filtered_superv),
+        'has_direct_observation': has_direct_observation(filtered_superv),
+        'work_hours': work_hours,
+        'supervised_hours': superv_hours,
+        'required_hours': required_hours,
+        'percent_achieved': percent_achieved,
+        'hours_still_needed': hours_still_needed
+    }
+
+def view_year_summary():
+    year_input = input("Enter year (e.g., 2026): ").strip()
+    try:
+        year_val = int(year_input)
+    except ValueError:
+        print("Invalid input. Please enter a valid year.")
+        return
+    for month in range(1, 13):
+        report = generate_compliance_report(sessions, supervision_sessions, year_val, month)
+        if report['work_hours'] > 0:
+            print(f"\n=== Compliance Report for {month}/{year_val} ===")
+            print(f"Is Compliant (5% rule):    {report['is_compliant']}")
+            print(f"Has Individual Session:    {report['has_individual']}")
+            print(f"Has Direct Observation:    {report['has_direct_observation']}")
+
+
 if __name__ == "__main__":
     main_menu()
 # =============================================================================
@@ -510,14 +532,38 @@ if __name__ == "__main__":
 #
 # --- Missing functionality ---
 # 4. [DONE] Edit and delete sessions:
-# #    - list_sessions(), delete_session(), and edit_session() are wired into
-# #      menu option 5. Both validate the index (in-range and numeric) before
-# #      acting, and edit_session() updates start/end time in place so it
-# #      works for both WorkSession and SupervisionSession objects.
-# 5. [DONE] View / list logged sessions
-# 6. [DONE] Richer compliance report (actual numbers, not just True/False)
-# 7. Multiple months / history view
+#    - list_sessions(), delete_session(), and edit_session() are wired into
+#      menu option 4. Both validate the index (in-range and numeric) before
+#      acting, and edit_session() updates start/end time in place so it
+#      works for both WorkSession and SupervisionSession objects.
+# 5. [DONE] View / list logged sessions:
+#    - view_sessions_in_month() supports a specific month/year or "ALL",
+#      shows a formatted table per session type, plus monthly hour totals.
+# 6. [DONE] Richer compliance report:
+#    - generate_compliance_report() now returns work_hours, supervised_hours,
+#      required_hours, percent_achieved, and hours_still_needed alongside the
+#      existing True/False checks. view_compliance() prints all of it.
+# 7. [IN PROGRESS] Multiple months / history view:
+#    - view_year_summary() loops all 12 months for a given year, reusing
+#      generate_compliance_report() per month, skipping empty months.
+#    - NOT YET DONE: a "compliant streak" counter (consecutive compliant
+#      months) was part of the original goal for this item and hasn't
+#      been built yet.
+#    - NOT YET TESTED: run this against real logged data across a few
+#      months to confirm the empty-month skip and output look right.
 # 8. Export to CSV or text
 #
 # --- Code cleanup ---
-# 9. Rename "format" parameter to observation_format (shadows built-in format())
+# 9. Rename "format" parameter to observation_format (shadows built-in
+#    format()) — parameter, self.format, and both dict conversion
+#    functions (supervision_session_to_dict, dict_to_supervision_session)
+#    all need the rename together.
+#
+# --- Known minor gaps (not urgent) ---
+# - view_compliance()'s year/month input has no non-numeric input guard,
+#   unlike delete_session/edit_session/view_year_summary.
+# - In main_menu() option 4, if session_choice isn't "1" or "2",
+#   target_list is never set and the next line will crash.
+# - view_sessions_in_month()'s "ALL" branch ignores the year the user
+#   typed in — worth deciding if that's intentional or should filter
+#   by year still.
