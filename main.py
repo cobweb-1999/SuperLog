@@ -14,7 +14,7 @@ Author: Gabby
 import enum          # lets us define "enums": a fixed set of named, labeled choices
 import datetime as dt  # for working with dates and times; "as dt" gives it a shorter nickname
 import json          # for reading/writing data as text files in the JSON format
-import os            # for filesystem checks (os.path.exists) and file removal (os.remove)
+import os            # for filesystem checks (os.path.exists) and file removal (os.remov
 
 
 # =============================================================================
