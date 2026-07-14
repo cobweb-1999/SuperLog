@@ -47,5 +47,12 @@
         "format": 1,
         "session_type": 1,
         "is_direct_observation": true
+    },
+    {
+        "start_time": "2026-07-14T12:30:00",
+        "end_time": "2026-07-14T15:30:00",
+        "format": 1,
+        "session_type": 1,
+        "is_direct_observation": true
     }
 ]

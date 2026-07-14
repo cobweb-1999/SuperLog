@@ -356,9 +356,11 @@ def main_menu():
         print("1) Log a work session")
         print("2) Log a supervision session")
         print("3) View compliance report")
-        print("4) Exit")
+        print("4) Edit/delete sessions")
+        print("5) View sessions for month")
+        print("6) Exit")
 
-        choice = input("Enter your choice (1-4): ")
+        choice = input("Enter your choice (1-6): ")
 
         if choice == "1":
             log_work_session()
@@ -367,8 +369,6 @@ def main_menu():
         elif choice == "3":
             view_compliance()
         elif choice == "4":
-            print("Goodbye!")
-        elif choice == "5":
             session_choice = input("Work Session or Supervision Session? (1/2): ")
             if session_choice == "1":
                 target_list = sessions
@@ -379,6 +379,11 @@ def main_menu():
                 delete_session(target_list)
             elif action_choice == "2":
                 edit_session(target_list)
+        elif choice == "5":
+            view_sessions_in_month()
+        elif choice == "6":
+            print("Goodbye!")
+            break
         else:
             print("Invalid choice. Try again.")
 
@@ -422,6 +427,76 @@ def edit_session(session_list):
     save_sessions()
     print("Session edited.")
 
+
+def view_sessions_in_month():
+    # FIX 1: Keep inputs as strings first to safely check for 'all'
+    month_input = input("Enter month (1-12 or 'ALL'): ").strip().lower()
+    year_input = input("Enter year (e.g., 2026): ").strip()
+
+    if month_input == "all":
+        filtered_sessions = sessions
+        filtered_supervision = supervision_sessions
+        display_month = "ALL"
+        display_year = year_input
+
+    else:
+        try:
+            # FIX 5: Remove redundant casting; parse once and use directly
+            month_val = int(month_input)
+            year_val = int(year_input)
+
+            if not (1 <= month_val <= 12):
+                print("Invalid month. Please enter a number between 1-12.")
+                return
+
+            filtered_sessions = sessions_in_month(sessions, year_val, month_val)
+            filtered_supervision = sessions_in_month(supervision_sessions, year_val, month_val)
+            display_month = month_val
+            display_year = year_val
+
+        except ValueError:
+            print("Invalid input. Please enter a valid month and year.")
+            return
+
+    # FIX 3: Calculate totals now that filtered lists are guaranteed to exist
+    work_hours = total_hours(filtered_sessions)
+    superv_hours = total_hours(filtered_supervision)
+
+    # --- WORK SESSIONS ---
+    print(f"\n=== Work Sessions for {display_month}/{display_year} ===")
+    if not filtered_sessions:
+        print("No work sessions recorded.")
+    else:
+        print(f"{'ID':<4} | {'Start Time':<20} | {'End Time':<20} | {'Duration':<12}")
+        print("-" * 68)
+        # FIX 4: Consistent index start (both use start=1 for user readability)
+        for i, session in enumerate(filtered_sessions, start=1):
+            # BONUS FIX: Parentheses fixed around the subtraction so .total_seconds() works
+            duration = (session.end_time - session.start_time).total_seconds() / 3600
+            print(f"{i:<4} | {session.start_time.strftime('%Y-%m-%d %H:%M'):<20} | "
+                  f"{session.end_time.strftime('%Y-%m-%d %H:%M'):<20} | {duration:.2f}")
+
+    # --- SUPERVISION SESSIONS ---
+    print(f"\n=== Supervision Sessions for {display_month}/{display_year} ===")
+    if not filtered_supervision:
+        print("No supervision sessions recorded.")
+    else:
+        print(f"{'ID':<4} | {'Start Time':<20} | {'End Time':<20} | {'Format':<10} | {'Type':<10} | {'Direct Obs'}")
+        print("-" * 68)
+        for i, session in enumerate(filtered_supervision, start=1):
+            fmt = session.format.name
+            stype = session.session_type.name
+            obs = "YES" if session.is_direct_observation else "NO"
+            print(f"{i:<4} | {session.start_time.strftime('%Y-%m-%d %H:%M'):<20} | "
+                  f"{session.end_time.strftime('%Y-%m-%d %H:%M'):<20} | {fmt:<10} | {stype:<10} | {obs}")
+
+    # --- TOTALS ---
+    print(f"\n--- Monthly Totals ---")
+    print(f"Work Hours:            {work_hours:.2f}")
+    print(f"Supervision Hours:     {superv_hours:.2f}")
+    input("\nPress Enter to return to menu...")
+
+
 if __name__ == "__main__":
     main_menu()
 # =============================================================================
@@ -439,8 +514,8 @@ if __name__ == "__main__":
 # #      menu option 5. Both validate the index (in-range and numeric) before
 # #      acting, and edit_session() updates start/end time in place so it
 # #      works for both WorkSession and SupervisionSession objects.
-# 5. View / list logged sessions
-# 6. Richer compliance report (actual numbers, not just True/False)
+# 5. [DONE] View / list logged sessions
+# 6. [DONE] Richer compliance report (actual numbers, not just True/False)
 # 7. Multiple months / history view
 # 8. Export to CSV or text
 #
