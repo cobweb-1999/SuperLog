@@ -1,45 +1,45 @@
 # SuperLog
 
-A command-line tool for RBTs to track supervision hours and stay compliant with BACB requirements — built because I got tired of tracking mine in a Notes app.
+A browser-based RBT supervision tracker for logging work hours, supervision sessions, and monthly BACB compliance checks.
 
-## Why this exists
+## Why This Exists
 
-If you're an RBT, you already know: at least 5% of your monthly direct service hours need to be supervised, you need at least one individual (not group) contact per month, and at least one session has to include direct observation. There's no official app for this. Most people track it in a spreadsheet, a Notes app, or just... don't, until it's audit time and they're scrambling.
+If you're an RBT, you already know the basics: at least 5% of your monthly direct service hours need to be supervised, you need at least one individual supervision contact per month, and at least one contact has to include direct observation. A lot of people track that in a spreadsheet, a notes app, or just keep it in their head until audit time.
 
-I'm an RBT and a cybersecurity student learning Python, so I built this both to actually solve the problem and to learn by building something real instead of doing tutorial exercises.
+I built SuperLog to solve that problem with a simple browser app, using only Python and local JSON files.
 
-## What it does right now
+## What It Does
 
-- Log work sessions and supervision sessions with real dates/times
-- Calculates whether you've hit the 5% supervision requirement for a given month
-- Checks whether you've had at least one individual contact and one direct observation session
-- Saves everything to disk, so your data is still there next time you open it
+- Log work sessions and supervision sessions with real dates and times
+- Edit or delete saved sessions in the browser
+- View month and year summaries
+- Calculate whether the 5% supervision requirement is met
+- Check whether you have at least one individual contact and one direct observation session
+- Save data to disk so it persists between runs
+- Support login, registration, logout, and per-user private data storage
+- Protect state-changing actions with CSRF tokens
 
-## What it doesn't do yet
+## Authentication And Data Storage
 
-- No GUI — it's a terminal menu right now
-- No edit/delete for a session you logged by mistake (coming soon)
-- Only tracks one person's data at a time
-- Doesn't check the 50%-of-hours-must-be-individual rule yet, only the "at least one" rules
+SuperLog now supports lightweight authentication for internal testing and small-team use.
 
-## Running it
+- User accounts are stored in `users.json`
+- Each user gets private session data under `data/<username>/`
+- Work sessions are saved in `data/<username>/work_sessions.json`
+- Supervision sessions are saved in `data/<username>/supervision_sessions.json`
+- Session cookies are signed, and POST actions require a CSRF token
 
-You'll need Python 3 installed. Clone this repo, then:
+## What It Does Not Do Yet
 
-```
-python main.py
-```
+- It still tracks one user's data at a time per account
+- It does not yet check the “50% of supervision hours must be individual” rule
+- It does not yet generate PDF or CSV exports
+- It does not yet keep an audit trail for edits and deletes
 
-It'll walk you through a simple menu — log sessions, view your compliance report, exit. Your data saves automatically to two JSON files in the same folder.
+## Current Roadmap
 
-## Status
+Better account management. Right now login exists, but for real users I want a cleaner way to create, disable, and reset accounts without editing files by hand. That matters as soon as more than one person is using it.
 
-Currently being tested by a couple of BCBAs at the ABA center where I work. Still early — expect rough edges. If something breaks or is confusing, I want to know about it.
+Audit history for edits and deletes. When multiple people are logging sessions, I need to know who changed what and when. That protects against accidental data loss and makes the app trustworthy for compliance use.
 
-## Built with
-
-Python, `datetime`, `enum`, `json`. No external dependencies, no database — just plain files. Kept it simple on purpose while I was still learning.
-
-## License
-
-Not decided yet.
+Export and backup. Let users download their data or monthly reports as CSV or PDF, and give me an easy recovery path if something goes wrong. That is the main safety net before wider testing.

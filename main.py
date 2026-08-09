@@ -16,6 +16,10 @@ import datetime as dt  # for working with dates and times; "as dt" gives it a sh
 import json          # for reading/writing data as text files in the JSON format
 import os            # for filesystem checks (os.path.exists) and file removal (os.remov
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WORK_SESSIONS_FILE = os.path.join(BASE_DIR, 'work_sessions.json')
+SUPERVISION_SESSIONS_FILE = os.path.join(BASE_DIR, 'supervision_sessions.json')
+
 
 # =============================================================================
 # ENUMS - fixed, named choices for supervision session attributes
@@ -164,31 +168,37 @@ def dict_to_supervision_session(data):
     return SupervisionSession(start_time, end_time, format, session_type, is_direct_observation)
 
 
-def load_sessions():
+def load_sessions(use_sample_data=True):
     """Loads sessions from JSON files at startup. Falls back to sample data
     on a fresh install, and also recovers from a corrupted save file by
     deleting it and using sample data instead. [DONE - both blocks below]"""
     global sessions, supervision_sessions
 
     try:
-        with open('work_sessions.json', 'r') as file:
+        with open(WORK_SESSIONS_FILE, 'r') as file:
             work_data = json.load(file)
             sessions = [dict_to_work_session(entry) for entry in work_data]
     except (json.JSONDecodeError, UnicodeDecodeError, FileNotFoundError):
+        if use_sample_data:
             print("Error decoding JSON file. Using default data.")
             sessions = list(DEFAULT_WORK_SESSIONS)
-            if os.path.exists('work_sessions.json'):
-                os.remove('work_sessions.json')
+        else:
+            sessions = []
+        if os.path.exists(WORK_SESSIONS_FILE):
+            os.remove(WORK_SESSIONS_FILE)
 
     try:
-        with open('supervision_sessions.json', 'r') as file:
+        with open(SUPERVISION_SESSIONS_FILE, 'r') as file:
             supervision_data = json.load(file)
             supervision_sessions = [dict_to_supervision_session(entry) for entry in supervision_data]
     except (json.JSONDecodeError, UnicodeDecodeError, FileNotFoundError):
-        print("Error decoding JSON file. Using default data.")
-        supervision_sessions = list(DEFAULT_SUPERVISION_SESSIONS)
-        if os.path.exists('supervision_sessions.json'):
-            os.remove('supervision_sessions.json')
+        if use_sample_data:
+            print("Error decoding JSON file. Using default data.")
+            supervision_sessions = list(DEFAULT_SUPERVISION_SESSIONS)
+        else:
+            supervision_sessions = []
+        if os.path.exists(SUPERVISION_SESSIONS_FILE):
+            os.remove(SUPERVISION_SESSIONS_FILE)
 
 
 def save_sessions():
@@ -196,11 +206,11 @@ def save_sessions():
     NOTE: no error handling here yet (item 2b - not on your list but worth
     doing eventually: what if disk is full or the file is locked?)."""
     work_dicts = [work_session_to_dict(s) for s in sessions]
-    with open('work_sessions.json', 'w') as file:
+    with open(WORK_SESSIONS_FILE, 'w') as file:
         json.dump(work_dicts, file, indent=4)
 
     supervision_dicts = [supervision_session_to_dict(s) for s in supervision_sessions]
-    with open('supervision_sessions.json', 'w') as file:
+    with open(SUPERVISION_SESSIONS_FILE, 'w') as file:
         json.dump(supervision_dicts, file, indent=4)
 
 
@@ -483,10 +493,10 @@ def generate_compliance_report(work_sessions, supervision_sessions, year, month)
     superv_hours = total_hours(filtered_superv)
     required_hours = work_hours * .05
 
-    if work_hours == 0:
+    if work_hours == 0 or required_hours == 0:
         percent_achieved = 0
     else:
-        percent_achieved = (superv_hours / required_hours) * 100
+        percent_achieved = min((superv_hours / required_hours) * 100, 100)
 
     hours_still_needed = required_hours - superv_hours
     if hours_still_needed < 0:
@@ -521,49 +531,3 @@ def view_year_summary():
 
 if __name__ == "__main__":
     main_menu()
-# =============================================================================
-# FEATURES STILL TO BE IMPLEMENTED
-# =============================================================================
-# 1. [DONE] Input validation in log_supervision_session()
-# 2. [DONE] Corrupt-file handling in load_sessions()
-# 3. [DONE] Overlap detection:
-#    - Warns and blocks when a newly logged session overlaps an existing
-#      one, for both work sessions and supervision sessions.
-#
-# --- Missing functionality ---
-# 4. [DONE] Edit and delete sessions:
-#    - list_sessions(), delete_session(), and edit_session() are wired into
-#      menu option 4. Both validate the index (in-range and numeric) before
-#      acting, and edit_session() updates start/end time in place so it
-#      works for both WorkSession and SupervisionSession objects.
-# 5. [DONE] View / list logged sessions:
-#    - view_sessions_in_month() supports a specific month/year or "ALL",
-#      shows a formatted table per session type, plus monthly hour totals.
-# 6. [DONE] Richer compliance report:
-#    - generate_compliance_report() now returns work_hours, supervised_hours,
-#      required_hours, percent_achieved, and hours_still_needed alongside the
-#      existing True/False checks. view_compliance() prints all of it.
-# 7. [IN PROGRESS] Multiple months / history view:
-#    - view_year_summary() loops all 12 months for a given year, reusing
-#      generate_compliance_report() per month, skipping empty months.
-#    - NOT YET DONE: a "compliant streak" counter (consecutive compliant
-#      months) was part of the original goal for this item and hasn't
-#      been built yet.
-#    - NOT YET TESTED: run this against real logged data across a few
-#      months to confirm the empty-month skip and output look right.
-# 8. Export to CSV or text
-#
-# --- Code cleanup ---
-# 9. Rename "format" parameter to observation_format (shadows built-in
-#    format()) — parameter, self.format, and both dict conversion
-#    functions (supervision_session_to_dict, dict_to_supervision_session)
-#    all need the rename together.
-#
-# --- Known minor gaps (not urgent) ---
-# - view_compliance()'s year/month input has no non-numeric input guard,
-#   unlike delete_session/edit_session/view_year_summary.
-# - In main_menu() option 4, if session_choice isn't "1" or "2",
-#   target_list is never set and the next line will crash.
-# - view_sessions_in_month()'s "ALL" branch ignores the year the user
-#   typed in — worth deciding if that's intentional or should filter
-#   by year still.

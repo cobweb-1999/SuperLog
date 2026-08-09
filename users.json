@@ -1,0 +1,11 @@
+[
+  {
+    "username": "testuser",
+    "password": {
+      "salt": "/V7CiK1HBT/n1aeFUBCHCw==",
+      "hash": "2Ig24cMpdgJJjTWhAR2ka2TuJztIvqXKjEvcItrLj9A=",
+      "iterations": 200000
+    },
+    "created_at": "2026-08-09T20:33:32.897807"
+  }
+]
