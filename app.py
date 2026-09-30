@@ -324,7 +324,7 @@ def _render_session_rows(indexed_sessions, session_type='work', include_actions=
             edit_href = f'/{session_type}/edit?index={index}'
             delete_action = f'/{session_type}/delete?index={index}'
             cells.append(
-                '<td class="table-actions">'
+                                '<td class="table-actions">'
                 f'<a class="button secondary" href="{_escape(edit_href)}">Edit</a>'
                 f'<form method="post" action="{_escape(delete_action)}" class="inline-action-form" onsubmit="return confirm(\'Delete this session?\');">'
                 f'<input type="hidden" name="csrf_token" value="{_escape(csrf_token)}">'

@@ -107,11 +107,25 @@ def sessions_in_month(session_list, year, month):
 
 
 def is_compliant(work_sessions, supervision_sessions, year, month):
-    """BACB Rule: at least 5% of that month's worked hours were supervised."""
     filtered_work = sessions_in_month(work_sessions, year, month)
-    filtered_supervision = sessions_in_month(supervision_sessions, year, month)
-    required_hours = total_hours(filtered_work) * .05
-    return total_hours(filtered_supervision) >= required_hours
+    filtered_supervision = sessions_in_month(
+        supervision_sessions,
+        year,
+        month
+    )
+
+    required_hours = total_hours(filtered_work) * 0.05
+    supervised_hours = total_hours(filtered_supervision)
+
+    meets_five_percent_rule = supervised_hours >= required_hours
+    has_individual = has_individual_session(filtered_supervision)
+    has_direct_obs = has_direct_observation(filtered_supervision)
+
+    return (
+        meets_five_percent_rule
+        and has_individual
+        and has_direct_obs
+    )
 
 
 def has_individual_session(supervision_sessions):
@@ -247,8 +261,8 @@ def log_work_session():
 
 def sessions_overlap(new_session, existing_session):
     """Returns True if two individual sessions' time ranges overlap at all."""
-    return (new_session.start_time <= existing_session.end_time and
-            new_session.end_time >= existing_session.start_time)
+    return (new_session.start_time < existing_session.end_time and
+            new_session.end_time > existing_session.start_time)
 
 
 def check_overlap(new_session, existing_sessions):
@@ -323,7 +337,8 @@ def view_compliance():
     report = generate_compliance_report(sessions, supervision_sessions, year, month)
 
     print(f"\n=== Compliance Report for {month}/{year} ===")
-    print(f"Is Compliant (5% rule):    {report['is_compliant']}")
+    print(f"Overall Compliant:         {report['is_compliant']}")
+    print(f"Meets 5% Rule:             {report['meets_five_percent']}")
     print(f"Has Individual Session:    {report['has_individual']}")
     print(f"Has Direct Observation:    {report['has_direct_observation']}")
 
@@ -488,26 +503,21 @@ def view_sessions_in_month():
 
 def generate_compliance_report(work_sessions, supervision_sessions, year, month):
     filtered_work = sessions_in_month(work_sessions, year, month)
-    filtered_superv = sessions_in_month(supervision_sessions, year, month)
+    filtered_supervision = sessions_in_month(supervision_sessions, year, month)
     work_hours = total_hours(filtered_work)
-    superv_hours = total_hours(filtered_superv)
-    required_hours = work_hours * .05
-
-    if work_hours == 0 or required_hours == 0:
-        percent_achieved = 0
-    else:
-        percent_achieved = min((superv_hours / required_hours) * 100, 100)
-
-    hours_still_needed = required_hours - superv_hours
-    if hours_still_needed < 0:
-        hours_still_needed = 0
+    supervised_hours = total_hours(filtered_supervision)
+    required_hours = work_hours * 0.05
+    percent_achieved = (supervised_hours / required_hours * 100) if required_hours > 0 else 0
+    hours_still_needed = max(0, required_hours - supervised_hours)
+    meets_five_percent = supervised_hours >= required_hours
 
     return {
         'is_compliant': is_compliant(work_sessions, supervision_sessions, year, month),
-        'has_individual': has_individual_session(filtered_superv),
-        'has_direct_observation': has_direct_observation(filtered_superv),
+        'meets_five_percent': meets_five_percent,
+        'has_individual': has_individual_session(filtered_supervision),
+        'has_direct_observation': has_direct_observation(filtered_supervision),
         'work_hours': work_hours,
-        'supervised_hours': superv_hours,
+        'supervised_hours': supervised_hours,
         'required_hours': required_hours,
         'percent_achieved': percent_achieved,
         'hours_still_needed': hours_still_needed
@@ -523,8 +533,8 @@ def view_year_summary():
     for month in range(1, 13):
         report = generate_compliance_report(sessions, supervision_sessions, year_val, month)
         if report['work_hours'] > 0:
-            print(f"\n=== Compliance Report for {month}/{year_val} ===")
-            print(f"Is Compliant (5% rule):    {report['is_compliant']}")
+            print(f"Overall Compliant:         {report['is_compliant']}")
+            print(f"Meets 5% Rule:             {report['meets_five_percent']}")
             print(f"Has Individual Session:    {report['has_individual']}")
             print(f"Has Direct Observation:    {report['has_direct_observation']}")
 

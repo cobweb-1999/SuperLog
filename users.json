@@ -1,11 +1,11 @@
 [
   {
-    "username": "testuser",
+    "username": "demo",
     "password": {
-      "salt": "/V7CiK1HBT/n1aeFUBCHCw==",
-      "hash": "2Ig24cMpdgJJjTWhAR2ka2TuJztIvqXKjEvcItrLj9A=",
+      "salt": "8XCbjlR16x5/87KaKAHn5A==",
+      "hash": "2+Z1MmDaXS7ebEF/DRU/UfQ/4v1zkKWn7jgJAm02xkU=",
       "iterations": 200000
     },
-    "created_at": "2026-08-09T20:33:32.897807"
+    "created_at": "2026-09-29T21:12:01.094218"
   }
 ]
