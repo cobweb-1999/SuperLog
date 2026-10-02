@@ -84,9 +84,6 @@ DEFAULT_SUPERVISION_SESSIONS = [
                         ObservationType.IN_PERSON, SupervisionType.GROUP, False),
 ]
 
-sessions = []              # will hold WorkSession objects
-supervision_sessions = []  # will hold SupervisionSession objects
-
 
 # =============================================================================
 # CORE COMPLIANCE LOGIC

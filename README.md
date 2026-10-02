@@ -109,7 +109,7 @@ Back up both `users.json` and the complete `data/` directory. Deleting `users.js
 SUPERLOG_SECRET_KEY=replace-with-a-long-random-secret
 ```
 
-- The current JSON storage and threaded HTTP server still need additional isolation, atomic-write, and deployment hardening before the application should be exposed publicly.
+- The current JSON storage still needs atomic-write and deployment hardening before the application should be exposed publicly.
 
 ## Known Limitations
 
@@ -124,9 +124,8 @@ SUPERLOG_SECRET_KEY=replace-with-a-long-random-secret
 ## Roadmap
 
 1. Add route and persistence tests, including two-user isolation.
-2. Remove request-level shared state from the browser application.
-3. Make JSON writes atomic and preserve corrupted files for recovery.
-4. Add CSV export and printable monthly reports.
-5. Add audit history and account-management workflows.
-6. Add validated backup and restore.
-7. For internet-facing deployment, migrate to a database and production web server with HTTPS, rate limiting, secret management, and structured logging.
+2. Make JSON writes atomic and preserve corrupted files for recovery.
+3. Add CSV export and printable monthly reports.
+4. Add audit history and account-management workflows.
+5. Add validated backup and restore.
+6. For internet-facing deployment, migrate to a database and production web server with HTTPS, rate limiting, secret management, and structured logging.

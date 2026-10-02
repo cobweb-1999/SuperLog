@@ -455,12 +455,21 @@ def _render_form(kind, message='', values=None, action_path=None, submit_label='
     return _page_shell(title, body_html, current_user)
 
 
-def _render_dashboard(year, month, message='', current_user=None, csrf_token=''):
-    report = core.generate_compliance_report(core.sessions, core.supervision_sessions, year, month)
+def _render_dashboard(
+    year,
+    month,
+    message='',
+    current_user=None,
+    csrf_token='',
+    work_sessions=None,
+    supervision_sessions=None,
+):
+    work_sessions = work_sessions or []
+    supervision_sessions = supervision_sessions or []
+    report = core.generate_compliance_report(work_sessions, supervision_sessions, year, month)
     month_label = _month_name(year, month)
-    work_rows = _render_session_rows(_current_month_indexed(core.sessions, year, month), 'work', True, csrf_token)
-    supervision_rows = _render_session_rows(_current_month_indexed(core.supervision_sessions, year, month), 'supervision', True, csrf_token)
-
+    work_rows = _render_session_rows(_current_month_indexed(work_sessions, year, month), 'work', True, csrf_token)
+    supervision_rows = _render_session_rows(_current_month_indexed(supervision_sessions, year, month), 'supervision', True, csrf_token)
     body_html = f'''
     {_message_html(message)}
     <section class="hero card">
@@ -519,11 +528,13 @@ def _render_dashboard(year, month, message='', current_user=None, csrf_token='')
     return _page_shell('SuperLog Dashboard', body_html, current_user)
 
 
-def _render_month_report(year, month, message='', current_user=None, csrf_token=''):
-    report = core.generate_compliance_report(core.sessions, core.supervision_sessions, year, month)
+def _render_month_report(year, month, message='', current_user=None, csrf_token='', work_sessions=None, supervision_sessions=None):
+    work_sessions = work_sessions or []
+    supervision_sessions = supervision_sessions or []
+    report = core.generate_compliance_report(work_sessions, supervision_sessions, year, month)
     month_label = _month_name(year, month)
-    work_rows = _render_session_rows(_current_month_indexed(core.sessions, year, month), 'work', True, csrf_token)
-    supervision_rows = _render_session_rows(_current_month_indexed(core.supervision_sessions, year, month), 'supervision', True, csrf_token)
+    work_rows = _render_session_rows(_current_month_indexed(work_sessions, year, month), 'work', True, csrf_token)
+    supervision_rows = _render_session_rows(_current_month_indexed(supervision_sessions, year, month), 'supervision', True, csrf_token)
 
     body_html = f'''
     {_message_html(message)}
@@ -555,10 +566,12 @@ def _render_month_report(year, month, message='', current_user=None, csrf_token=
     return _page_shell('Monthly Report', body_html, current_user)
 
 
-def _render_year_report(year, message='', current_user=None):
+def _render_year_report(year, message='', current_user=None, work_sessions=None, supervision_sessions=None):
+    work_sessions = work_sessions or []
+    supervision_sessions = supervision_sessions or []
     rows_html = []
     for month in range(1, 13):
-        report = core.generate_compliance_report(core.sessions, core.supervision_sessions, year, month)
+        report = core.generate_compliance_report(work_sessions, supervision_sessions, year, month)
         if report['work_hours'] > 0 or report['supervised_hours'] > 0:
             rows_html.append(
                 '<tr>'
@@ -666,10 +679,9 @@ class SuperLogHandler(BaseHTTPRequestHandler):
 
         if current_user:
             work_sessions, supervision_sessions = _load_user_sessions(current_user['username'])
-            core.sessions = work_sessions
-            core.supervision_sessions = supervision_sessions
             csrf_token, csrf_headers = self._get_or_create_csrf_token()
         else:
+            work_sessions, supervision_sessions = [], []
             csrf_token = ''
             csrf_headers = []
 
@@ -693,7 +705,10 @@ class SuperLogHandler(BaseHTTPRequestHandler):
 
         if parsed.path == '/':
             year, month = _parse_month_year(query, now.year, now.month)
-            return self._send_html(_render_dashboard(year, month, message, current_user, csrf_token), extra_headers=csrf_headers)
+            return self._send_html(
+                _render_dashboard(year, month, message, current_user, csrf_token, work_sessions, supervision_sessions),
+                extra_headers=csrf_headers,
+            )
 
         if parsed.path == '/work/new':
             return self._send_html(_render_form('work', message, None, None, 'Save session', 'Log Work Session', csrf_token, current_user), extra_headers=csrf_headers)
@@ -701,7 +716,7 @@ class SuperLogHandler(BaseHTTPRequestHandler):
         if parsed.path == '/work/edit':
             index = _parse_index(query)
             try:
-                session = _get_session_by_index(core.sessions, index)
+                session = _get_session_by_index(work_sessions, index)
             except IndexError:
                 return self._send_html(_page_shell('Not Found', '<section class="card"><h2>Page not found</h2><p class="muted">The requested route does not exist.</p></section>', current_user), HTTPStatus.NOT_FOUND, extra_headers=csrf_headers)
             return self._send_html(_render_form('work', message, _session_form_values(session, 'work'), action_path=f'/work/edit?index={index}', submit_label='Update session', title='Edit Work Session', csrf_token=csrf_token, current_user=current_user), extra_headers=csrf_headers)
@@ -712,18 +727,24 @@ class SuperLogHandler(BaseHTTPRequestHandler):
         if parsed.path == '/supervision/edit':
             index = _parse_index(query)
             try:
-                session = _get_session_by_index(core.supervision_sessions, index)
+                session = _get_session_by_index(supervision_sessions, index)
             except IndexError:
                 return self._send_html(_page_shell('Not Found', '<section class="card"><h2>Page not found</h2><p class="muted">The requested route does not exist.</p></section>', current_user), HTTPStatus.NOT_FOUND, extra_headers=csrf_headers)
             return self._send_html(_render_form('supervision', message, _session_form_values(session, 'supervision'), action_path=f'/supervision/edit?index={index}', submit_label='Update session', title='Edit Supervision Session', csrf_token=csrf_token, current_user=current_user), extra_headers=csrf_headers)
 
         if parsed.path == '/reports/month':
             year, month = _parse_month_year(query, now.year, now.month)
-            return self._send_html(_render_month_report(year, month, message, current_user, csrf_token), extra_headers=csrf_headers)
+            return self._send_html(
+                _render_month_report(year, month, message, current_user, csrf_token, work_sessions, supervision_sessions),
+                extra_headers=csrf_headers,
+            )
 
         if parsed.path == '/reports/year':
             year = _parse_int(query, 'year', now.year)
-            return self._send_html(_render_year_report(year, message, current_user), extra_headers=csrf_headers)
+            return self._send_html(
+                _render_year_report(year, message, current_user, work_sessions, supervision_sessions),
+                extra_headers=csrf_headers,
+            )
 
         self._send_html(_page_shell('Not Found', '<section class="card"><h2>Page not found</h2><p class="muted">The requested route does not exist.</p></section>', current_user), HTTPStatus.NOT_FOUND, extra_headers=csrf_headers)
 
@@ -785,42 +806,40 @@ class SuperLogHandler(BaseHTTPRequestHandler):
             return self._send_html(_page_shell('Forbidden', '<section class="card"><h2>Invalid request</h2><p class="muted">The request did not include a valid security token.</p></section>'), HTTPStatus.FORBIDDEN)
 
         work_sessions, supervision_sessions = _load_user_sessions(current_user['username'])
-        core.sessions = work_sessions
-        core.supervision_sessions = supervision_sessions
 
         try:
             if parsed.path == '/work/new':
                 start_time = _parse_datetime_field(form, 'start_time')
                 end_time = _parse_datetime_field(form, 'end_time')
                 session = core.WorkSession(start_time, end_time)
-                if not core.check_overlap(session, core.sessions):
+                if not core.check_overlap(session, work_sessions):
                     raise ValueError('This work session overlaps an existing session.')
-                core.sessions.append(session)
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                work_sessions.append(session)
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Work session saved."})}')
                 return
 
             if parsed.path == '/work/edit':
                 index = _parse_index(query)
-                current_session = _get_session_by_index(core.sessions, index)
+                current_session = _get_session_by_index(work_sessions, index)
                 start_time = _parse_datetime_field(form, 'start_time')
                 end_time = _parse_datetime_field(form, 'end_time')
                 updated_session = core.WorkSession(start_time, end_time)
-                remaining_sessions = [session for session_index, session in enumerate(core.sessions) if session_index != index]
+                remaining_sessions = [session for session_index, session in enumerate(work_sessions) if session_index != index]
                 if not core.check_overlap(updated_session, remaining_sessions):
                     raise ValueError('This work session overlaps an existing session.')
                 current_session.start_time = start_time
                 current_session.end_time = end_time
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Work session updated."})}')
                 return
 
             if parsed.path == '/work/delete':
                 index = _parse_index(query)
-                current_session = _get_session_by_index(core.sessions, index)
+                current_session = _get_session_by_index(work_sessions, index)
                 start_time = current_session.start_time
-                del core.sessions[index]
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                del work_sessions[index]
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Work session deleted."})}')
                 return
 
@@ -837,16 +856,16 @@ class SuperLogHandler(BaseHTTPRequestHandler):
                     core.SupervisionType(session_type),
                     direct_observation,
                 )
-                if not core.check_overlap(session, core.supervision_sessions):
+                if not core.check_overlap(session, supervision_sessions):
                     raise ValueError('This supervision session overlaps an existing session.')
-                core.supervision_sessions.append(session)
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                supervision_sessions.append(session)
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Supervision session saved."})}')
                 return
 
             if parsed.path == '/supervision/edit':
                 index = _parse_index(query)
-                current_session = _get_session_by_index(core.supervision_sessions, index)
+                current_session = _get_session_by_index(supervision_sessions, index)
                 start_time = _parse_datetime_field(form, 'start_time')
                 end_time = _parse_datetime_field(form, 'end_time')
                 observation_format = int(form.get('observation_format', [''])[0])
@@ -859,7 +878,7 @@ class SuperLogHandler(BaseHTTPRequestHandler):
                     core.SupervisionType(session_type),
                     direct_observation,
                 )
-                remaining_sessions = [session for session_index, session in enumerate(core.supervision_sessions) if session_index != index]
+                remaining_sessions = [session for session_index, session in enumerate(supervision_sessions) if session_index != index]
                 if not core.check_overlap(updated_session, remaining_sessions):
                     raise ValueError('This supervision session overlaps an existing session.')
                 current_session.start_time = start_time
@@ -867,16 +886,16 @@ class SuperLogHandler(BaseHTTPRequestHandler):
                 current_session.format = core.ObservationType(observation_format)
                 current_session.session_type = core.SupervisionType(session_type)
                 current_session.is_direct_observation = direct_observation
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Supervision session updated."})}')
                 return
 
             if parsed.path == '/supervision/delete':
                 index = _parse_index(query)
-                current_session = _get_session_by_index(core.supervision_sessions, index)
+                current_session = _get_session_by_index(supervision_sessions, index)
                 start_time = current_session.start_time
-                del core.supervision_sessions[index]
-                _save_user_sessions(current_user['username'], core.sessions, core.supervision_sessions)
+                del supervision_sessions[index]
+                _save_user_sessions(current_user['username'], work_sessions, supervision_sessions)
                 self._redirect(f'/?{urlencode({"year": start_time.year, "month": start_time.month, "msg": "Supervision session deleted."})}')
                 return
 
@@ -888,7 +907,7 @@ class SuperLogHandler(BaseHTTPRequestHandler):
             if parsed.path == '/work/edit':
                 index = _parse_index(query)
                 try:
-                    session = _get_session_by_index(core.sessions, index)
+                    session = _get_session_by_index(work_sessions, index)
                 except IndexError:
                     return self._send_html(_page_shell('Not Found', '<section class="card"><h2>Page not found</h2><p class="muted">The requested route does not exist.</p></section>', current_user), HTTPStatus.NOT_FOUND)
                 return self._send_html(_render_form('work', message, form or _session_form_values(session, 'work'), action_path=f'/work/edit?index={index}', submit_label='Update session', title='Edit Work Session', csrf_token=csrf_token, current_user=current_user))
@@ -897,7 +916,7 @@ class SuperLogHandler(BaseHTTPRequestHandler):
             if parsed.path == '/supervision/edit':
                 index = _parse_index(query)
                 try:
-                    session = _get_session_by_index(core.supervision_sessions, index)
+                    session = _get_session_by_index(supervision_sessions, index)
                 except IndexError:
                     return self._send_html(_page_shell('Not Found', '<section class="card"><h2>Page not found</h2><p class="muted">The requested route does not exist.</p></section>', current_user), HTTPStatus.NOT_FOUND)
                 return self._send_html(_render_form('supervision', message, form or _session_form_values(session, 'supervision'), action_path=f'/supervision/edit?index={index}', submit_label='Update session', title='Edit Supervision Session', csrf_token=csrf_token, current_user=current_user))
